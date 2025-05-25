@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Geri Bildirim Formu</h2>
+  <p><strong>İşlenmiş Görüntü:</strong></p>
+  <img src="{{ img }}" alt="İşlenmiş Görüntü" width="320"><br><br>
+
+  <form method="post" action="{{ url_for('feedback') }}">
+    <input type="hidden" name="img" value="{{ img }}">
+    <label>Geri Bildirim Türü:</label><br>
+    <select name="fb_type" required>
+      <option value="">Seçiniz…</option>
+      <option value="false_positive">Yanlış Alarm</option>
+      <option value="missed_defect">Kusur Atlandı</option>
+    </select><br><br>
+
+    <label>Ek Açıklama (opsiyonel):</label><br>
+    <textarea name="note" rows="3" cols="50" placeholder="Kısa notunuzu yazın…"></textarea><br><br>
+
+    <button type="submit">Gönder</button>
+    <a href="{{ url_for('officer_dashboard') }}"><button type="button">İptal</button></a>
+  </form>
+{% endblock %}

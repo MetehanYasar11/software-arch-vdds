@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Görevli Paneli</h2>
+  <form method="post" enctype="multipart/form-data">
+    <label>Ürün Görüntüsü Seç:</label><br>
+    <input type="file" name="image" accept="image/*"><br><br>
+    <button type="submit">Analiz Et</button>
+  </form>
+{% endblock %}

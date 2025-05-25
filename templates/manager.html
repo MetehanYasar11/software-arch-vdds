@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Yönetici Paneli</h2>
+  <p>Toplam Geri Bildirim: {{ total }}</p>
+  <p>Yanlış Alarm (False Positive): {{ fp }}</p>
+  <p>Kusur Atlandı (Missed Defect): {{ md }}</p>
+  <button disabled>Modeli Güncelle (Henüz Aktif Değil)</button>
+{% endblock %}
