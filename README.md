@@ -1,3 +1,19 @@
+## System Reset (Factory Defaults)
+
+Managers can reset the system to factory defaults from the dashboard:
+
+- Deletes all inspection and query logs from the database
+- Removes all uploaded and processed images
+- Requires manager password confirmation
+- Accessible only to managers from the dashboard (red “Reset All Data” button)
+
+**How to use:**
+1. Log in as manager
+2. Click the red “Reset All Data” button under the pie chart
+3. Enter your password in the modal and confirm
+4. All data and images will be deleted, and a success message will be shown
+
+**Note:** This action cannot be undone.
 # AI-Based Visual Defect Detection System (VDDS)
 
 ## Overview

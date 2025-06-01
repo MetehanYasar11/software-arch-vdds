@@ -3,6 +3,9 @@ from flask_login import UserMixin
 from datetime import datetime
 
 class User(UserMixin, db.Model):
+    def check_password(self, password):
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password, password)
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
@@ -22,6 +25,7 @@ class InspectionLog(db.Model):
     # New: explicit original and processed image paths
     orig_path = db.Column(db.String(256))
     proc_path = db.Column(db.String(256))
+    processed_img = db.Column(db.String(256), nullable=True)  # New: processed image filename
     user = db.relationship('User')
 
 # Production-level query log

@@ -1,4 +1,5 @@
 from flask import render_template, redirect, url_for, flash, request, session, current_app
+from flask import Blueprint
 from flask_login import login_user, logout_user, login_required, current_user
 from . import db, login_manager
 from .models import User, InspectionLog, QueryLog
@@ -34,9 +35,58 @@ import os
 import shutil
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
+bp = Blueprint('main', __name__)
+
+# System Reset Route (Manager only)
+@bp.route('/reset', methods=['POST'])
+@login_required
+def reset():
+    if current_user.role != 'QualityControlManager':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    pwd = request.form['password']
+    if not current_user.check_password(pwd):
+        flash('Wrong password', 'danger')
+        return redirect(url_for('main.dashboard'))
+    # Delete DB rows & files
+    import shutil, glob, os
+    for p in glob.glob('static/uploads/*') + glob.glob('static/processed/*'):
+        try:
+            os.remove(p)
+        except Exception:
+            pass
+    db.session.query(InspectionLog).delete()
+    db.session.query(QueryLog).delete()
+    db.session.commit()
+    flash('System reset to factory defaults.', 'success')
+    return redirect(url_for('main.dashboard'))
 from flask import Blueprint
 
 bp = Blueprint('main', __name__)
+
+# System Reset Route (Manager only)
+@bp.route('/reset', methods=['POST'])
+@login_required
+def reset():
+    if current_user.role != 'QualityControlManager':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    pwd = request.form['password']
+    if not current_user.check_password(pwd):
+        flash('Wrong password', 'danger')
+        return redirect(url_for('main.dashboard'))
+    # Delete DB rows & files
+    import shutil, glob, os
+    for p in glob.glob('static/uploads/*') + glob.glob('static/processed/*'):
+        try:
+            os.remove(p)
+        except Exception:
+            pass
+    db.session.query(InspectionLog).delete()
+    db.session.query(QueryLog).delete()
+    db.session.commit()
+    flash('System reset to factory defaults.', 'success')
+    return redirect(url_for('main.dashboard'))
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -99,6 +149,7 @@ def inspect():
             orig_path=orig_rel,
             proc_path=proc_rel,
             image_path=orig_rel,
+            processed_img=proc_name,
             timestamp=datetime.datetime.utcnow()
         )
         db.session.add(log)
@@ -192,8 +243,9 @@ def export_csv():
     # Prepare CSV in memory
     si = io.StringIO()
     writer = csv.writer(si)
-    writer.writerow(['ID', 'Timestamp', 'User', 'Result', 'FalseAlarm', 'MissedDefect', 'Annotation', 'Disposition', 'OrigImg', 'ProcImg', 'ImagePath'])
+    writer.writerow(['ID', 'Timestamp', 'User', 'Result', 'FalseAlarm', 'MissedDefect', 'Annotation', 'Disposition', 'OrigImage', 'ProcImage'])
     for log in logs:
+        processed_path = f"static/processed/{log.processed_img}" if log.processed_img else (log.proc_path or '')
         writer.writerow([
             log.id,
             log.timestamp,
@@ -204,8 +256,7 @@ def export_csv():
             log.annotation,
             log.disposition,
             log.orig_path or '',
-            log.proc_path or '',
-            log.image_path or ''
+            processed_path
         ])
     output = make_response(si.getvalue())
     from datetime import datetime
