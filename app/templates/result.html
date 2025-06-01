@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dark-card">
+  <h2>Inspection Result</h2>
+  <div class="row mb-3">
+    <div class="col-md-6 text-center">
+      <h5 style="color:#ccc;">Original</h5>
+      <img src="{{ url_for('static', filename='uploads/' + filename) }}" alt="Original Image" class="img-fluid img-thumbnail">
+    </div>
+    <div class="col-md-6 text-center">
+      <h5 style="color:#ccc;">Processed</h5>
+      <img src="{{ url_for('static', filename='processed/' + processed) }}" alt="Processed Image" class="img-fluid img-thumbnail">
+    </div>
+  </div>
+  <div class="alert alert-{{ 'success' if result == 'OK' else 'danger' }}">
+    Result: <strong>{{ result }}</strong>
+  </div>
+  <form method="post">
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" name="false_alarm" id="false_alarm">
+    <label class="form-check-label" for="false_alarm">False Alarm</label>
+  </div>
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" name="missed_defect" id="missed_defect">
+    <label class="form-check-label" for="missed_defect">Missed Defect</label>
+  </div>
+  <div class="form-group mt-2">
+    <label>Annotation (optional)</label>
+    <textarea class="form-control" name="annotation"></textarea>
+  </div>
+  <div class="form-group">
+    <label>Disposition</label><br>
+    <div class="form-check form-check-inline">
+      <input class="form-check-input" type="radio" name="disposition" id="accept" value="Accept" required>
+      <label class="form-check-label" for="accept">Accept</label>
+    </div>
+    <div class="form-check form-check-inline">
+      <input class="form-check-input" type="radio" name="disposition" id="rework" value="Rework" required>
+      <label class="form-check-label" for="rework">Rework</label>
+    </div>
+    <div class="form-check form-check-inline">
+      <input class="form-check-input" type="radio" name="disposition" id="scrap" value="Scrap" required>
+      <label class="form-check-label" for="scrap">Scrap</label>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-login">Submit Feedback</button>
+</form>
+{% endblock %}

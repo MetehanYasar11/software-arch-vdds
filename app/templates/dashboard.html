@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dark-card">
+  <h2>Manager Dashboard</h2>
+  <div class="row">
+  <div class="col-md-4">
+    <ul class="list-group mb-3">
+      <li class="list-group-item">Total Inspections: {{ total }}</li>
+      <li class="list-group-item">False Alarm Rate: {{ (false_alarms/total*100) if total else 0 | round(1) }}%</li>
+      <li class="list-group-item">Missed Defect Rate: {{ (missed/total*100) if total else 0 | round(1) }}%</li>
+    </ul>
+  </div>
+  <div class="col-md-4">
+    <canvas id="pieChart"></canvas>
+  </div>
+  <div class="col-md-4">
+    <canvas id="barChart"></canvas>
+  </div>
+  </div>
+  <script>
+  var pieCtx = document.getElementById('pieChart').getContext('2d');
+  var pieChart = new Chart(pieCtx, {
+    type: 'pie',
+    data: {
+      labels: ['Accept', 'Rework', 'Scrap'],
+      datasets: [{
+        data: [{{ disposition_counts['Accept'] }}, {{ disposition_counts['Rework'] }}, {{ disposition_counts['Scrap'] }}],
+        backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+      }]
+    }
+  });
+  var barCtx = document.getElementById('barChart').getContext('2d');
+  var barChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: ['False Alarm', 'Missed Defect'],
+      datasets: [{
+        label: 'Count',
+        data: [{{ false_alarms }}, {{ missed }}],
+        backgroundColor: ['#007bff', '#fd7e14']
+      }]
+    }
+  });
+</script>
+{% endblock %}

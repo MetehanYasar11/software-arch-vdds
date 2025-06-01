@@ -1,53 +1,67 @@
-# VDDS Prototype
+# AI-Based Visual Defect Detection System (VDDS)
 
-Course: CSE344 – Software Engineering (Spring 2025)
-Project: AI-Based Visual Defect Detection System – Prototype Tool
-Prepared by: Metehan Yaşar (20223505003-2D)
+## Overview
+A Flask + SQLite + Docker prototype for visual defect detection in manufacturing, with role-based access, inspection logging, feedback, and manager dashboard. 
 
----
+## Features
+- User authentication (officer/manager roles)
+- Image inspection with stubbed AI detection (≤2s response)
+- Feedback form (false alarm, missed defect, annotation, disposition)
+- Inspection logging (timestamp, user, result, flags, annotation, disposition, image path)
+- Manager dashboard with stats and charts (Chart.js)
+- Model update stub (manager only)
+- Dockerised for easy deployment
 
-📦 Repository Structure
+## Setup
 
-vdds_prototype/
-├── test_input.jpg
-├── models/
-│   └── yolov5n.pt
-├── requirements.txt
-├── src/
-│   ├── app.py
-│   ├── detection.py
-│   ├── feedback.py
-│   └── templates/
-│       ├── officer_dashboard.html
-│       ├── manager_dashboard.html
-│       └── feedback.html
-└── README.md
+### 1. Local (pip)
+```powershell
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python run.py
+```
+App runs at http://localhost:5000
 
----
+### 2. Docker
+```powershell
+docker build -t vdds .
+docker run -p 5000:5000 vdds
+```
 
-🛠️ Setup & Installation
+## Default Logins
+- Officer: `officer` / `officerpass`
+- Manager: `manager` / `managerpass`
 
-1. Python environment
-   Open Anaconda Prompt and create & activate a new environment:
+## Usage Flow
+1. Officer logs in, uploads image, reviews result, submits feedback.
+2. All actions are logged.
+3. Manager logs in to view dashboard and trigger model update stub.
 
-   conda create -n vdds_env python=3.9 -y
-   conda activate vdds_env
-   python -m pip install --upgrade pip
+## Project Structure
+```
+app/
+  __init__.py  models.py  routes.py  detection.py
+  templates/ base.html login.html inspect.html dashboard.html model.html
+static/
+  uploads/ ...
+data/ (auto-created)
+models/ (empty for now)
+run.py
+Dockerfile
+requirements.txt
+README.md
+```
 
-2. Project dependencies
-   From the project root directory:
+## TODO
+- Replace detection stub in `app/detection.py` with real YOLO model weights and inference logic.
+- Implement real model update logic in `/model` route.
 
-   pip install -r requirements.txt
-
-3. YOLOv5n model
-   Place the pretrained weights in models/yolov5n.pt. If you don’t have it:
-
-   curl -L -o models/yolov5n.pt \
-     https://github.com/ultralytics/yolov5/releases/download/v6.1/yolov5n.pt
-
----
-
-▶️ Running the Application
+## Assumptions
+- All images are stored in `static/uploads/`.
+- Only two roles exist: QualityControlOfficer and QualityControlManager.
+- No email/password reset; default users are created on first run.
+- All requirements from Analysis & Design reports are mapped as above. If any ambiguity, see this README for rationale.
 
 python src/app.py
 

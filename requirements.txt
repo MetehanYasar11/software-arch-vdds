@@ -1,7 +1,4 @@
-Flask==2.2.5
-torch>=2.0.0
-torchvision==0.20.0
-ultralytics>=8.0.0
-opencv-python>=4.5.5
-Pillow>=9.0.0
-pandas>=1.4.0
+Flask
+Flask-Login
+Flask-SQLAlchemy
+Werkzeug

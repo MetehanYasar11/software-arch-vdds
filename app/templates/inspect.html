@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dark-card">
+  <h2>Inspection</h2>
+  <form method="post" enctype="multipart/form-data">
+    <div class="form-group">
+      <label>Upload Image</label>
+      <input type="file" name="image" class="form-control login-input" required>
+    </div>
+    <button type="submit" class="btn btn-login mt-2">Run Inspection</button>
+  </form>
+</div>
+{% endblock %}

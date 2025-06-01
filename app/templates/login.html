@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="login-bg d-flex align-items-center justify-content-center min-vh-100">
+  <div class="card login-card shadow-lg p-4" style="min-width:350px; max-width:400px; width:100%; background:rgba(30,34,40,0.97); border-radius:18px;">
+    <div class="text-center mb-4">
+      <h2 class="mb-0" style="color:#fff; letter-spacing:1px;">VDDS Login</h2>
+      <small style="color:#b0b8c1;">AI-Based Visual Defect Detection</small>
+    </div>
+    <form method="post">
+      <div class="form-group">
+        <label style="color:#b0b8c1;">Username</label>
+        <input type="text" name="username" class="form-control login-input" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label style="color:#b0b8c1;">Password</label>
+        <input type="password" name="password" class="form-control login-input" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-block btn-login mt-3">Login</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
