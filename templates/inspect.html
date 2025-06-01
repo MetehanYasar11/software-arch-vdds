@@ -8,4 +8,16 @@
   </div>
   <button type="submit" class="btn btn-success">Run Inspection</button>
 </form>
+{% if proc_img %}
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <h5>Original</h5>
+      <img src="{{ url_for('static', filename='uploads/' + orig_img) }}" class="img-fluid border" alt="Original">
+    </div>
+    <div class="col-md-6">
+      <h5>Processed</h5>
+      <img src="{{ url_for('static', filename='processed/' + proc_img) }}" class="img-fluid border" alt="Processed">
+    </div>
+  </div>
+{% endif %}
 {% endblock %}

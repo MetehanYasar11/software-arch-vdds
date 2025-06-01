@@ -5,11 +5,11 @@
   <div class="row mb-3">
     <div class="col-md-6 text-center">
       <h5 style="color:#ccc;">Original</h5>
-      <img src="{{ url_for('static', filename='uploads/' + filename) }}" alt="Original Image" class="img-fluid img-thumbnail">
+      <img src="{{ url_for('static', filename=filename) }}?v={{ uid }}" alt="Original Image" class="img-fluid img-thumbnail">
     </div>
     <div class="col-md-6 text-center">
       <h5 style="color:#ccc;">Processed</h5>
-      <img src="{{ url_for('static', filename='processed/' + processed) }}" alt="Processed Image" class="img-fluid img-thumbnail">
+      <img src="{{ url_for('static', filename=processed) }}?v={{ uid }}" alt="Processed Image" class="img-fluid img-thumbnail">
     </div>
   </div>
   <div class="alert alert-{{ 'success' if result == 'OK' else 'danger' }}">

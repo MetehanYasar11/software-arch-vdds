@@ -28,7 +28,8 @@ def log_request(request, result):
     except Exception as e:
         # Don't crash app if logging fails
         print(f"[QueryLog] Logging failed: {e}")
-from .detection import detect_defects, draw_boxes
+from .detection import detect_defects
+from .utils import draw_bboxes
 import os
 import shutil
 from werkzeug.security import check_password_hash
@@ -68,30 +69,52 @@ def inspect():
     if current_user.role != 'QualityControlOfficer':
         return redirect(url_for('main.dashboard'))
     if request.method == 'POST':
-        file = request.files['image']
-        if file:
-            filename = secure_filename(file.filename)
-            upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-            file.save(upload_path)
-            # Real YOLO detection
-            detection = detect_defects(upload_path)
-            # Save original and processed images
-            session['last_image'] = filename
-            # Ensure processed folder exists
-            processed_dir = os.path.abspath(os.path.join(current_app.root_path, '../static/processed'))
-            os.makedirs(processed_dir, exist_ok=True)
-            processed_path = os.path.join(processed_dir, filename)
-            shutil.copy(upload_path, processed_path)
-            # Draw YOLO-style boxes with label:conf on processed image
-            draw_boxes(processed_path, detection.get('detections', []), color='lime', width=4)
-            session['processed_image'] = filename  # Only filename, not path
-            session['last_result'] = detection['result']
-            session['last_detections'] = detection.get('detections', [])
-            session['last_annotation_json'] = json.dumps(detection.get('detections', []), ensure_ascii=False)
-            # Log the inspection request
-            log_request(request, detection)
-            return redirect(url_for('main.result'))
-        flash('No file uploaded')
+        from uuid import uuid4
+        file = request.files.get('image')
+        if not file or file.filename == '':
+            flash('No file uploaded')
+            return render_template('inspect.html')
+        ext = file.filename.rsplit('.', 1)[-1].lower()
+        uid = uuid4().hex[:8]
+        orig_fname = f"{uid}_orig.{ext}"
+        orig_rel = f"uploads/{orig_fname}"
+        upload_dir = os.path.join(current_app.root_path, '../static/uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        upload_path = os.path.join(upload_dir, orig_fname)
+        file.save(upload_path)
+        dets_result = detect_defects(upload_path)
+        dets = dets_result.get('detections', [])
+        proc_name = draw_bboxes(upload_path, dets)
+        proc_rel = f"processed/{proc_name}"
+        # Save to DB immediately for traceability
+        from .models import InspectionLog
+        import datetime
+        log = InspectionLog(
+            user_id=current_user.id if hasattr(current_user, 'id') else None,
+            result=dets_result.get('result', 'OK'),
+            false_alarm=False,
+            missed_defect=False,
+            annotation=json.dumps(dets, ensure_ascii=False),
+            disposition=None,
+            orig_path=orig_rel,
+            proc_path=proc_rel,
+            image_path=orig_rel,
+            timestamp=datetime.datetime.utcnow()
+        )
+        db.session.add(log)
+        db.session.commit()
+        # Save relative names for template and session
+        session['last_image'] = orig_rel
+        session['processed_image'] = proc_rel
+        session['last_result'] = dets_result.get('result', 'OK')
+        session['last_detections'] = dets
+        session['last_annotation_json'] = json.dumps(dets, ensure_ascii=False)
+        session['last_uid'] = uid
+        session['last_ext'] = ext
+        session['last_inspection_id'] = log.id
+        # Log the inspection request
+        log_request(request, {'detections': dets, 'inspection_id': log.id})
+        return redirect(url_for('main.result'))
     return render_template('inspect.html')
 
 @bp.route('/result', methods=['GET', 'POST'])
@@ -99,36 +122,45 @@ def inspect():
 def result():
     if current_user.role != 'QualityControlOfficer':
         return redirect(url_for('main.dashboard'))
-    filename = session.get('last_image')
-    result = session.get('last_result')
-    if not filename or not result:
+    # Get last inspection from DB for full consistency
+    inspection_id = session.get('last_inspection_id')
+    from .models import InspectionLog
+    log = None
+    if inspection_id:
+        log = InspectionLog.query.get(inspection_id)
+    if not log:
         return redirect(url_for('main.inspect'))
-    processed = session.get('processed_image')
-    detections = session.get('last_detections', [])
-    annotation_json = session.get('last_annotation_json', '')
+    orig_path = log.orig_path
+    proc_path = log.proc_path
+    result = log.result
+    detections = json.loads(log.annotation) if log.annotation else []
+    annotation_json = log.annotation or ''
+    uid = session.get('last_uid', '')
+    ext = session.get('last_ext', '')
+    # On POST, update feedback fields only
     if request.method == 'POST':
         false_alarm = 'false_alarm' in request.form
         missed_defect = 'missed_defect' in request.form
         annotation = request.form.get('annotation', '')
         disposition = request.form.get('disposition')
-        # Store detection JSON in annotation field
-        annotation_full = annotation_json if annotation_json else annotation
-        log = InspectionLog(
-            user_id=current_user.id,
-            result=result,
-            false_alarm=false_alarm,
-            missed_defect=missed_defect,
-            annotation=annotation_full,
-            disposition=disposition,
-            image_path=filename
-        )
-        db.session.add(log)
+        # Update log with feedback
+        log.false_alarm = false_alarm
+        log.missed_defect = missed_defect
+        log.annotation = annotation_json if annotation_json else annotation
+        log.disposition = disposition
         db.session.commit()
-        # Log the feedback/submit request
         log_request(request, {'status': 'feedback_submitted', 'inspection_id': log.id})
         flash('Feedback submitted!')
         return redirect(url_for('main.inspect'))
-    return render_template('result.html', filename=filename, processed=processed, result=result, detections=detections)
+    # Her zaman DB'den kutulu resmi üret (güncel bbox ile)
+    from .utils import draw_bboxes
+    import os
+    orig_abs = os.path.join(current_app.root_path, '../static', orig_path)
+    proc_abs = os.path.join(current_app.root_path, '../static', proc_path)
+    if os.path.exists(orig_abs) and detections:
+        # Her GET'te kutulu resmi tekrar üret (en güncel bbox ile)
+        draw_bboxes(orig_abs, detections)
+    return render_template('result.html', filename=orig_path, processed=proc_path, result=result, detections=detections, uid=uid)
 
 @bp.route('/dashboard')
 @login_required
@@ -160,7 +192,7 @@ def export_csv():
     # Prepare CSV in memory
     si = io.StringIO()
     writer = csv.writer(si)
-    writer.writerow(['ID', 'Timestamp', 'User', 'Result', 'FalseAlarm', 'MissedDefect', 'Annotation', 'Disposition', 'ImagePath'])
+    writer.writerow(['ID', 'Timestamp', 'User', 'Result', 'FalseAlarm', 'MissedDefect', 'Annotation', 'Disposition', 'OrigImg', 'ProcImg', 'ImagePath'])
     for log in logs:
         writer.writerow([
             log.id,
@@ -171,7 +203,9 @@ def export_csv():
             log.missed_defect,
             log.annotation,
             log.disposition,
-            log.image_path
+            log.orig_path or '',
+            log.proc_path or '',
+            log.image_path or ''
         ])
     output = make_response(si.getvalue())
     from datetime import datetime

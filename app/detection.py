@@ -33,27 +33,26 @@ def detect_defects(image_path):
     {class, confidence, bbox} where class is COCO string.
     Handles model load errors gracefully (fallback to stub).
     """
+    from PIL import Image
+    img = Image.open(image_path)
+    orig_w, orig_h = img.size
     model = _get_model()
     if model is None:
-        # Fallback: always return both 'bus' and 'person' for test robustness
-        from PIL import Image
-        img = Image.open(image_path)
-        w, h = img.size
-        detections = [
-            {
-                'class': 'bus',
-                'confidence': 0.95,
-                'bbox': [int(w*0.1), int(h*0.1), int(w*0.5), int(h*0.5)]
-            },
-            {
-                'class': 'person',
-                'confidence': 0.93,
-                'bbox': [int(w*0.6), int(h*0.2), int(w*0.8), int(h*0.7)]
-            }
-        ]
-        return {'result': 'DEFECT', 'detections': detections, 'error': 'Model unavailable'}
+        raise RuntimeError('YOLO model could not be loaded. No fallback/stub bbox allowed in production.')
+
+    # Optionally downscale for RAM, but keep track of scaling
+    import os
+    YOLO_IMAGE_MAX = int(os.environ.get('YOLO_IMAGE_MAX', 0))
+    resize_ratio = 1.0
+    img_for_pred = img
+    if YOLO_IMAGE_MAX and (orig_w > YOLO_IMAGE_MAX or orig_h > YOLO_IMAGE_MAX):
+        scale = YOLO_IMAGE_MAX / max(orig_w, orig_h)
+        new_w, new_h = int(orig_w * scale), int(orig_h * scale)
+        img_for_pred = img.resize((new_w, new_h))
+        resize_ratio = scale
     try:
-        results = model(image_path, verbose=False)
+        # Use Ultralytics API to avoid internal resize if possible
+        results = model.predict(img_for_pred, imgsz=(img_for_pred.height, img_for_pred.width), verbose=False)
         detections = []
         for r in results:
             boxes = r.boxes
@@ -63,51 +62,26 @@ def detect_defects(image_path):
                 label = names[cls_id] if names and cls_id < len(names) else str(cls_id)
                 conf = float(box.conf[0]) if hasattr(box.conf, '__len__') else float(box.conf)
                 xyxy = box.xyxy[0].cpu().numpy() if hasattr(box.xyxy, '__len__') else box.xyxy.cpu().numpy()
-                x1, y1, x2, y2 = map(int, xyxy)
+                # Rescale to original image size if needed
+                if resize_ratio != 1.0:
+                    x1, y1, x2, y2 = [int(round(coord / resize_ratio)) for coord in xyxy]
+                else:
+                    x1, y1, x2, y2 = [int(round(coord)) for coord in xyxy]
+                # Clip to image bounds
+                x1 = max(0, min(x1, orig_w-1))
+                y1 = max(0, min(y1, orig_h-1))
+                x2 = max(0, min(x2, orig_w-1))
+                y2 = max(0, min(y2, orig_h-1))
                 detections.append({
                     'class': label,
                     'confidence': round(conf, 2),
                     'bbox': [x1, y1, x2, y2]
                 })
         result = 'DEFECT' if detections else 'OK'
-        # If no detections, fallback to stub for test robustness
-        if not any('bus' in d['class'] for d in detections) or not any('person' in d['class'] for d in detections):
-            from PIL import Image
-            img = Image.open(image_path)
-            w, h = img.size
-            detections = [
-                {
-                    'class': 'bus',
-                    'confidence': 0.95,
-                    'bbox': [int(w*0.1), int(h*0.1), int(w*0.5), int(h*0.5)]
-                },
-                {
-                    'class': 'person',
-                    'confidence': 0.93,
-                    'bbox': [int(w*0.6), int(h*0.2), int(w*0.8), int(h*0.7)]
-                }
-            ]
-            return {'result': 'DEFECT', 'detections': detections, 'error': 'Model fallback'}
         return {'result': result, 'detections': detections}
     except Exception as e:
         print(f"[YOLO] Detection failed: {e}")
-        # Fallback: always return both 'bus' and 'person' for test robustness
-        from PIL import Image
-        img = Image.open(image_path)
-        w, h = img.size
-        detections = [
-            {
-                'class': 'bus',
-                'confidence': 0.95,
-                'bbox': [int(w*0.1), int(h*0.1), int(w*0.5), int(h*0.5)]
-            },
-            {
-                'class': 'person',
-                'confidence': 0.93,
-                'bbox': [int(w*0.6), int(h*0.2), int(w*0.8), int(h*0.7)]
-            }
-        ]
-        return {'result': 'DEFECT', 'detections': detections, 'error': 'Detection failed'}
+        
 
 def draw_boxes(image_path, detections, color='green', width=4):
     """
@@ -125,8 +99,14 @@ def draw_boxes(image_path, detections, color='green', width=4):
     img = cv2.imread(image_path)
     if img is None:
         return
+    h, w = img.shape[:2]
     for det in detections:
         x1, y1, x2, y2 = det['bbox']
+        # Clip to image bounds
+        x1 = max(0, min(int(round(x1)), w-1))
+        y1 = max(0, min(int(round(y1)), h-1))
+        x2 = max(0, min(int(round(x2)), w-1))
+        y2 = max(0, min(int(round(y2)), h-1))
         label = det.get('class', 'obj')
         conf = det.get('confidence', 0)
         text = f"{label}:{conf:.2f}"

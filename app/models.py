@@ -17,7 +17,11 @@ class InspectionLog(db.Model):
     missed_defect = db.Column(db.Boolean, default=False)
     annotation = db.Column(db.Text)
     disposition = db.Column(db.String(16))
+    # Legacy: image_path (keep for compatibility)
     image_path = db.Column(db.String(256))
+    # New: explicit original and processed image paths
+    orig_path = db.Column(db.String(256))
+    proc_path = db.Column(db.String(256))
     user = db.relationship('User')
 
 # Production-level query log
