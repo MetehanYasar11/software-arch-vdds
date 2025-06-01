@@ -5,7 +5,7 @@ A Flask + SQLite + Docker prototype for visual defect detection in manufacturing
 
 ## Features
 - User authentication (officer/manager roles)
-- Image inspection with stubbed AI detection (≤2s response)
+- Image inspection with YOLOv8/YOLOv5n real detection (first run may download ~50MB weights)
 - Feedback form (false alarm, missed defect, annotation, disposition)
 - Inspection logging (timestamp, user, result, flags, annotation, disposition, image path)
 - Manager dashboard with stats and charts (Chart.js)
@@ -19,6 +19,7 @@ A Flask + SQLite + Docker prototype for visual defect detection in manufacturing
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+# First run may download YOLO weights (~50MB)
 python run.py
 ```
 App runs at http://localhost:5000
@@ -53,9 +54,21 @@ requirements.txt
 README.md
 ```
 
-## TODO
-- Replace detection stub in `app/detection.py` with real YOLO model weights and inference logic.
-- Implement real model update logic in `/model` route.
+## Testing & CI
+
+### Run tests
+```powershell
+pytest
+```
+or for quiet output:
+```powershell
+pytest -q
+```
+
+### Notes
+- Running YOLO locally / first-time weight download may take 50 MB.
+- If model download fails (offline), app will fallback to stub detection ("Model unavailable").
+- All flows & CSV export now show real detection annotation JSON.
 
 ## Assumptions
 - All images are stored in `static/uploads/`.

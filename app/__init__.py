@@ -22,10 +22,16 @@ def create_app():
     os.makedirs(os.path.abspath(os.path.join(app.root_path, '../data')), exist_ok=True)
 
     with app.app_context():
-        from . import routes
+        try:
+            from . import routes
+        except ImportError:
+            import routes
         db.create_all()
         # Create default users if not exist
-        from .models import User
+        try:
+            from .models import User
+        except ImportError:
+            from models import User
         from werkzeug.security import generate_password_hash
         if not User.query.filter_by(username='officer').first():
             db.session.add(User(username='officer', password=generate_password_hash('officerpass'), role='QualityControlOfficer'))
@@ -33,6 +39,9 @@ def create_app():
             db.session.add(User(username='manager', password=generate_password_hash('managerpass'), role='QualityControlManager'))
         db.session.commit()
     # Register blueprint
-    from .routes import bp
+    try:
+        from .routes import bp
+    except ImportError:
+        from routes import bp
     app.register_blueprint(bp)
     return app

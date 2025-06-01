@@ -28,7 +28,7 @@ def log_request(request, result):
     except Exception as e:
         # Don't crash app if logging fails
         print(f"[QueryLog] Logging failed: {e}")
-from .detection import detect_defects_stub, draw_boxes
+from .detection import detect_defects, draw_boxes
 import os
 import shutil
 from werkzeug.security import check_password_hash
@@ -73,8 +73,8 @@ def inspect():
             filename = secure_filename(file.filename)
             upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
             file.save(upload_path)
-            # Stub detection (TODO: replace with real inference)
-            detection = detect_defects_stub(upload_path)
+            # Real YOLO detection
+            detection = detect_defects(upload_path)
             # Save original and processed images
             session['last_image'] = filename
             # Ensure processed folder exists
@@ -86,6 +86,8 @@ def inspect():
             draw_boxes(processed_path, detection.get('detections', []), color='lime', width=4)
             session['processed_image'] = filename  # Only filename, not path
             session['last_result'] = detection['result']
+            session['last_detections'] = detection.get('detections', [])
+            session['last_annotation_json'] = json.dumps(detection.get('detections', []), ensure_ascii=False)
             # Log the inspection request
             log_request(request, detection)
             return redirect(url_for('main.result'))
@@ -102,17 +104,21 @@ def result():
     if not filename or not result:
         return redirect(url_for('main.inspect'))
     processed = session.get('processed_image')
+    detections = session.get('last_detections', [])
+    annotation_json = session.get('last_annotation_json', '')
     if request.method == 'POST':
         false_alarm = 'false_alarm' in request.form
         missed_defect = 'missed_defect' in request.form
         annotation = request.form.get('annotation', '')
         disposition = request.form.get('disposition')
+        # Store detection JSON in annotation field
+        annotation_full = annotation_json if annotation_json else annotation
         log = InspectionLog(
             user_id=current_user.id,
             result=result,
             false_alarm=false_alarm,
             missed_defect=missed_defect,
-            annotation=annotation,
+            annotation=annotation_full,
             disposition=disposition,
             image_path=filename
         )
@@ -122,7 +128,7 @@ def result():
         log_request(request, {'status': 'feedback_submitted', 'inspection_id': log.id})
         flash('Feedback submitted!')
         return redirect(url_for('main.inspect'))
-    return render_template('result.html', filename=filename, processed=processed, result=result)
+    return render_template('result.html', filename=filename, processed=processed, result=result, detections=detections)
 
 @bp.route('/dashboard')
 @login_required
