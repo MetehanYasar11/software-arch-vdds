@@ -29,14 +29,17 @@ def create_app():
         db.create_all()
         # Create default users if not exist
         try:
-            from .models import User
+            from .models import User, SystemSetting
         except ImportError:
-            from models import User
+            from models import User, SystemSetting
         from werkzeug.security import generate_password_hash
         if not User.query.filter_by(username='officer').first():
             db.session.add(User(username='officer', password=generate_password_hash('officerpass'), role='QualityControlOfficer'))
         if not User.query.filter_by(username='manager').first():
             db.session.add(User(username='manager', password=generate_password_hash('managerpass'), role='QualityControlManager'))
+        # Ensure default current_model is set
+        if not SystemSetting.query.get('current_model'):
+            SystemSetting.set('current_model', 'yolov8n.pt')
         db.session.commit()
     # Register blueprint
     try:

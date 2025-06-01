@@ -16,13 +16,39 @@ _model = None
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
+
+# --- Model selection logic ---
+
+MODEL_DIR = os.path.join(os.path.dirname(__file__), '..', 'models')
+
+def get_available_models():
+    return [f for f in os.listdir(MODEL_DIR) if f.endswith('.pt')]
+
+# Use SystemSetting for persistence
+def get_current_model_filename():
+    from app.models import SystemSetting
+    fname = SystemSetting.get('current_model', 'yolov8n.pt')
+    if fname in get_available_models():
+        return fname
+    models = get_available_models()
+    return models[0] if models else None
+
+def set_current_model_filename(fname):
+    from app.models import SystemSetting
+    if fname not in get_available_models():
+        raise ValueError('Model not found')
+    SystemSetting.set('current_model', fname)
+    global _model
+    _model = None  # force reload
+
 def _get_model():
     global _model
     if _model is None:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model_path = os.path.join('models', 'yolov8n_crack.pt')
-        if not os.path.exists(model_path):
-            model_path = os.path.join('models', 'yolov5nu.pt')
+        model_fname = get_current_model_filename()
+        if not model_fname:
+            raise RuntimeError('No model available in models directory')
+        model_path = os.path.join(MODEL_DIR, model_fname)
         logging.debug(f"[YOLO] Loading model from: {model_path} on device: {device}")
         try:
             _model = YOLO(model_path)

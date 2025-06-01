@@ -1,3 +1,41 @@
+
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
+from flask_login import login_user, logout_user, login_required, current_user
+from . import db, login_manager
+from .models import User, InspectionLog, QueryLog, SystemSetting
+from pathlib import Path
+import json
+import os
+import shutil
+from werkzeug.security import check_password_hash
+from werkzeug.utils import secure_filename
+
+bp = Blueprint('main', __name__)
+
+# Activate Model Route (Manager only)
+@bp.route('/activate_model', methods=['POST'])
+@login_required
+def activate_model():
+    if getattr(current_user, 'role', None) != 'QualityControlManager':
+        from flask import abort
+        abort(403)
+    pwd = request.form['password']
+    if not current_user.check_password(pwd):
+        flash('Wrong password.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    mdl = request.form['model_name']
+    # safety: verify file exists in models/
+    p = Path('models')/mdl
+    if not p.exists():
+        flash('File missing.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    # swap model
+    from app.detection import set_current_model_filename, _get_model
+    set_current_model_filename(mdl)
+    _get_model()  # force reload
+    SystemSetting.set('current_model', mdl)
+    flash(f"{mdl} activated.", 'success')
+    return redirect(url_for('main.dashboard'))
 from flask import render_template, redirect, url_for, flash, request, session, current_app
 from flask import Blueprint
 from flask_login import login_user, logout_user, login_required, current_user
@@ -29,7 +67,7 @@ def log_request(request, result):
     except Exception as e:
         # Don't crash app if logging fails
         print(f"[QueryLog] Logging failed: {e}")
-from .detection import detect_defects
+from .detection import detect_defects, get_available_models, get_current_model_filename, set_current_model_filename
 from .utils import draw_bboxes
 import os
 import shutil
@@ -227,7 +265,10 @@ def dashboard():
         if l.disposition in disposition_counts:
             disposition_counts[l.disposition] += 1
     last_logs = logs[:10]
-    return render_template('dashboard.html', total=total, false_alarms=false_alarms, missed=missed, disposition_counts=disposition_counts, last_logs=last_logs)
+    # Model selection context
+    available_models = get_available_models()
+    current_model = get_current_model_filename()
+    return render_template('dashboard.html', total=total, false_alarms=false_alarms, missed=missed, disposition_counts=disposition_counts, last_logs=last_logs, models=available_models, active=current_model)
 
 # Manager-only CSV export
 import csv

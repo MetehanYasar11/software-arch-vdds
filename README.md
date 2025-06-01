@@ -1,3 +1,22 @@
+## Model Manager (YOLO Weights)
+
+Managers can view and switch between available YOLO model weights from the dashboard:
+
+- Drop new `.pt` files into the `models/` directory (no subfolders).
+- The right panel in the Manager Dashboard lists all available models.
+- The currently loaded model is marked as **(Active)**.
+- To activate a different model, click the **Activate** button next to it. You will be prompted for the manager password.
+- On success, the selected model is loaded and used for all future detections. The choice is persisted in the database.
+
+**How to use:**
+1. Place your YOLO `.pt` file in the `models/` folder.
+2. Log in as manager and go to the dashboard.
+3. Find your model in the list and click **Activate**.
+4. Enter your password to confirm. The model will be swapped instantly.
+
+**Note:**
+- The system will remember your selection even after restart.
+- If a model file is missing, you will see an error.
 ## System Reset (Factory Defaults)
 
 Managers can reset the system to factory defaults from the dashboard:

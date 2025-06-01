@@ -29,6 +29,7 @@ class InspectionLog(db.Model):
     user = db.relationship('User')
 
 # Production-level query log
+
 class QueryLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
@@ -36,3 +37,20 @@ class QueryLog(db.Model):
     username = db.Column(db.String(80))
     params_json = db.Column(db.Text)
     result_json = db.Column(db.Text)
+
+# SystemSetting for global config (e.g. current model)
+class SystemSetting(db.Model):
+    key = db.Column(db.String(64), primary_key=True)
+    value = db.Column(db.String(256))
+
+    @classmethod
+    def get(cls, key, default=None):
+        rec = cls.query.get(key)
+        return rec.value if rec else default
+
+    @classmethod
+    def set(cls, key, val):
+        rec = cls.query.get(key) or cls(key=key)
+        rec.value = val
+        db.session.add(rec)
+        db.session.commit()
