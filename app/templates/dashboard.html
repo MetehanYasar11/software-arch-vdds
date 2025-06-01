@@ -17,6 +17,34 @@
     <canvas id="barChart"></canvas>
   </div>
   </div>
+  <!-- Export CSV button (manager only) -->
+  <div class="mb-3">
+    <a href="{{ url_for('main.export_csv') }}" class="btn btn-primary">Export CSV</a>
+  </div>
+
+  <!-- Last 10 Inspections Table -->
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered bg-dark text-light">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>User</th>
+          <th>Result</th>
+          <th>Disposition</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in last_logs %}
+        <tr>
+          <td>{{ log.id }}</td>
+          <td>{{ log.user.username if log.user else 'N/A' }}</td>
+          <td>{{ log.result }}</td>
+          <td>{{ log.disposition }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   <script>
   var pieCtx = document.getElementById('pieChart').getContext('2d');
   var pieChart = new Chart(pieCtx, {

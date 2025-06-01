@@ -19,3 +19,12 @@ class InspectionLog(db.Model):
     disposition = db.Column(db.String(16))
     image_path = db.Column(db.String(256))
     user = db.relationship('User')
+
+# Production-level query log
+class QueryLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    endpoint = db.Column(db.String(128))
+    username = db.Column(db.String(80))
+    params_json = db.Column(db.Text)
+    result_json = db.Column(db.Text)
